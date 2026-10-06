@@ -10,6 +10,78 @@ Set-Location $Root
 $Upstream = "https://github.com/nikita36078/J2ME-Loader.git"
 $Tag = "1.8.2"
 
+function Resolve-AndroidSdkPath {
+    $Candidates = @()
+
+    if ($env:ANDROID_HOME) {
+        $Candidates += $env:ANDROID_HOME
+    }
+    if ($env:ANDROID_SDK_ROOT) {
+        $Candidates += $env:ANDROID_SDK_ROOT
+    }
+    if ($env:LOCALAPPDATA) {
+        $Candidates += (Join-Path $env:LOCALAPPDATA "Android\Sdk")
+    }
+    if ($env:USERPROFILE) {
+        $Candidates += (Join-Path $env:USERPROFILE "AppData\Local\Android\Sdk")
+    }
+
+    foreach ($Candidate in ($Candidates | Select-Object -Unique)) {
+        if ([string]::IsNullOrWhiteSpace($Candidate)) {
+            continue
+        }
+
+        $Expanded = [Environment]::ExpandEnvironmentVariables($Candidate)
+        if (Test-Path -LiteralPath $Expanded -PathType Container) {
+            return (Resolve-Path -LiteralPath $Expanded).Path
+        }
+    }
+
+    return $null
+}
+
+function Ensure-AndroidLocalProperties {
+    param([string]$EnginePath)
+
+    $LocalProperties = Join-Path $EnginePath "local.properties"
+
+    # Keep a valid existing sdk.dir. Android Studio may already have created it.
+    if (Test-Path -LiteralPath $LocalProperties) {
+        $Existing = Get-Content -LiteralPath $LocalProperties -ErrorAction SilentlyContinue
+        foreach ($Line in $Existing) {
+            if ($Line -match '^\s*sdk\.dir\s*=\s*(.+?)\s*$') {
+                $RawPath = $Matches[1].Trim() -replace '\\:', ':'
+                $RawPath = $RawPath -replace '\\\\', '\'
+                $RawPath = $RawPath -replace '/', '\'
+                if (Test-Path -LiteralPath $RawPath -PathType Container) {
+                    Write-Host "Using Android SDK from existing local.properties: $RawPath"
+                    return
+                }
+            }
+        }
+    }
+
+    $SdkPath = Resolve-AndroidSdkPath
+    if (-not $SdkPath) {
+        throw @"
+Android SDK location was not found.
+
+Install/open Android Studio once and make sure Android SDK is installed, then rerun this script.
+Expected Windows location is usually:
+  $env:LOCALAPPDATA\Android\Sdk
+
+You can also set ANDROID_HOME or ANDROID_SDK_ROOT manually.
+"@
+    }
+
+    # Gradle local.properties accepts forward slashes on Windows and avoids
+    # backslash escaping issues such as C:\\Users\\... .
+    $GradleSdkPath = $SdkPath -replace '\\', '/'
+    "sdk.dir=$GradleSdkPath" | Set-Content -LiteralPath $LocalProperties -Encoding ASCII
+    Write-Host "Android SDK detected: $SdkPath"
+    Write-Host "Created: $LocalProperties"
+}
+
 if (-not (Test-Path $Jar)) {
     throw ("NOM 2 JAR not found: " + $Jar + [Environment]::NewLine + "Place your legally obtained game at game/nom2.jar.")
 }
@@ -38,6 +110,8 @@ if (-not (Test-Path (Join-Path $Engine ".git"))) {
         }
     }
 }
+
+Ensure-AndroidLocalProperties -EnginePath $Engine
 
 Write-Host "Preparing Galaxy S10 NOM 2 engine..."
 python tools/prepare_engine.py --engine $Engine --jar $Jar
