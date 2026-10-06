@@ -14,6 +14,41 @@ def replace_regex(path: Path, pattern: str, replacement: str, description: str) 
     path.write_text(updated, encoding="utf-8")
 
 
+def insert_before_first_method(path: Path, helper: str) -> None:
+    """Insert helper methods without depending on one exact patched Canvas layout."""
+    text = path.read_text(encoding="utf-8")
+    if "private boolean nom2PauseOverlayVisible()" in text:
+        return
+
+    # Canvas.java has already been modified by prepare_engine.py,
+    # post_patch_ui.py and disable_leaderboard.py before this script runs.
+    # Do not require one exact whitespace/newline form. Prefer nom2State(),
+    # then fall back to stable NOM2 helper/member anchors added by earlier steps.
+    patterns = (
+        r"(?m)^[ \t]*private\s+int\s+nom2State\s*\(\s*\)\s*\{",
+        r"(?m)^[ \t]*private\s+Object\s+nom2NameInput\s*\(\s*\)\s*\{",
+        r"(?m)^[ \t]*private\s+LinearLayout\s+nom2ButtonBar\s*;",
+    )
+
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            updated = text[:match.start()] + helper + text[match.start():]
+            path.write_text(updated, encoding="utf-8")
+            return
+
+    # Useful diagnostics if a future engine change moves these helpers again.
+    nearby = []
+    for needle in ("nom2State", "nom2NameInput", "nom2ButtonBar", "nom2LastButtonState"):
+        pos = text.find(needle)
+        nearby.append(f"{needle}={pos}")
+    raise RuntimeError(
+        "Could not find NOM 2 helper insertion point after prior Canvas patches ("
+        + ", ".join(nearby)
+        + ")"
+    )
+
+
 def patch_canvas(engine: Path) -> None:
     path = (
         engine
@@ -119,8 +154,6 @@ def patch_canvas(engine: Path) -> None:
 
     # Add a reliable pause-overlay detector. NOM 2 draws its in-game pause menu
     # from e.f(Graphics) while the obfuscated static flag bK is true.
-    marker = "\t\tprivate int nom2State() {\n"
-    text = path.read_text(encoding="utf-8")
     helper = """\t\tprivate boolean nom2BooleanField(String name) {
 \t\t\ttry {
 \t\t\t\tjava.lang.reflect.Field field = Canvas.this.getClass().getDeclaredField(name);
@@ -136,10 +169,7 @@ def patch_canvas(engine: Path) -> None:
 \t\t}
 
 """
-    if "private boolean nom2PauseOverlayVisible()" not in text:
-        if marker not in text:
-            raise RuntimeError("Could not find NOM 2 state helper insertion point")
-        path.write_text(text.replace(marker, helper + marker, 1), encoding="utf-8")
+    insert_before_first_method(path, helper)
 
     # Screen-matched bottom controls:
     # normal gameplay -> one Pause button only
@@ -212,15 +242,27 @@ def patch_canvas(engine: Path) -> None:
         raise RuntimeError("Could not rewrite NOM 2 native button listeners")
     path.write_text(updated, encoding="utf-8")
 
-    # Make the single gameplay Pause button visually fill the bottom bar.
-    # Hidden weighted siblings automatically leave the visible button full-width.
+    # Mark the resulting Canvas so repeated local setup runs are easy to diagnose.
     text = path.read_text(encoding="utf-8")
     if "NOM2_FINAL_S10_CONTROLS" not in text:
-        path.write_text(text.replace(
-            "\t\tprivate LinearLayout nom2ButtonBar;\n",
-            "\t\t// NOM2_FINAL_S10_CONTROLS\n\t\tprivate LinearLayout nom2ButtonBar;\n",
-            1,
-        ), encoding="utf-8")
+        member_pattern = re.search(r"(?m)^[ \t]*private\s+LinearLayout\s+nom2ButtonBar\s*;", text)
+        if member_pattern:
+            pos = member_pattern.start()
+            indent_match = re.match(r"[ \t]*", text[pos:])
+            indent = indent_match.group(0) if indent_match else "\t\t"
+            text = text[:pos] + indent + "// NOM2_FINAL_S10_CONTROLS\n" + text[pos:]
+            path.write_text(text, encoding="utf-8")
+
+    final_text = path.read_text(encoding="utf-8")
+    required = (
+        "private boolean nom2PauseOverlayVisible()",
+        "fireNom2Key(KEY_NUM5);",
+        'nom2OkButton.setText("일시정지")',
+        "NOM2_FINAL_S10_CONTROLS",
+    )
+    missing = [token for token in required if token not in final_text]
+    if missing:
+        raise RuntimeError("Final NOM 2 S10 control validation failed: " + ", ".join(missing))
 
 
 def main() -> int:
