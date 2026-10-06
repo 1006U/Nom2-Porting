@@ -7,6 +7,7 @@
 package ru.woesss.j2me.installer;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -29,6 +30,14 @@ import ru.playsoftware.j2meloader.config.ProfilesManager;
 public final class Nom2LauncherActivity extends Activity {
     private static final String ASSET_JAR = "nom2/nom2.jar";
 
+    // Change this whenever the bundled MIDlet patch changes. J2ME Loader normally
+    // reuses an already-converted MIDlet when MIDlet-Version is unchanged. NOM 2's
+    // Korean patch intentionally preserves the original 1.0.43 game version, so a
+    // separate port revision is required to force one refresh after APK updates.
+    private static final String PORT_REVISION = "nom2-port2-ko-s10-r1";
+    private static final String PREFS = "nom2_port_launcher";
+    private static final String PREF_INSTALLED_REVISION = "installed_revision";
+
     private TextView statusView;
     private AppInstaller installer;
     private AppListModel appListModel;
@@ -39,7 +48,7 @@ public final class Nom2LauncherActivity extends Activity {
 
         statusView = new TextView(this);
         statusView.setGravity(Gravity.CENTER);
-        statusView.setText("놈2 준비 중...");
+        statusView.setText("놈2 준비 중...\n" + PORT_REVISION);
         setContentView(statusView);
 
         try {
@@ -64,12 +73,28 @@ public final class Nom2LauncherActivity extends Activity {
         }
     }
 
+    private boolean bundledRevisionNeedsRefresh() {
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String installed = prefs.getString(PREF_INSTALLED_REVISION, "");
+        return !PORT_REVISION.equals(installed);
+    }
+
+    private void markBundledRevisionInstalled() {
+        getSharedPreferences(PREFS, MODE_PRIVATE)
+                .edit()
+                .putString(PREF_INSTALLED_REVISION, PORT_REVISION)
+                .apply();
+    }
+
     private void installOrLaunch() {
+        final boolean forceRefresh = bundledRevisionNeedsRefresh();
+
         Single.<Integer>create(installer::loadInfo)
                 .subscribeOn(Schedulers.io())
                 .flatMap(status -> {
                     if (status == AppInstaller.STATUS_NEW
-                            || status == AppInstaller.STATUS_NEWEST) {
+                            || status == AppInstaller.STATUS_NEWEST
+                            || forceRefresh) {
                         return Single.<Integer>create(installer::install);
                     }
 
@@ -83,7 +108,10 @@ public final class Nom2LauncherActivity extends Activity {
                             "Unsupported installer status: " + status));
                 })
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(ignored -> launchGame(), this::showError);
+                .subscribe(ignored -> {
+                    markBundledRevisionInstalled();
+                    launchGame();
+                }, this::showError);
     }
 
     private File copyBundledJar() throws IOException {
@@ -161,6 +189,8 @@ public final class Nom2LauncherActivity extends Activity {
         error.printStackTrace();
         runOnUiThread(() -> statusView.setText(
                 "놈2 실행 실패.\n\n"
+                        + PORT_REVISION
+                        + "\n\n"
                         + error.getClass().getSimpleName()
                         + ": "
                         + String.valueOf(error.getMessage())
