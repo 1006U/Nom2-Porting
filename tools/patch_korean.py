@@ -11,10 +11,16 @@ import zipfile
 from pathlib import Path
 
 
+INTRO_PREFIX = "R"
 INTRO_EN = (
     "Some time ago, NOM ran away from everything. NOM encountered many obstacles and faced many "
     "creatures of all sorts of sizes. NOM was also followed by a friendly dog and even kissed by "
     "a pretty lady. Those were the things that made NOM happy."
+)
+INTRO_KO = (
+    "오래전, 놈은 모든 것에서 도망쳤습니다. "
+    "수많은 장애물과 생명체를 만났고, 친근한 강아지와 예쁜 아가씨도 만났습니다. "
+    "그 모든 순간이 놈을 행복하게 했습니다."
 )
 
 CLASS_REPLACEMENTS = {
@@ -31,11 +37,9 @@ CLASS_REPLACEMENTS = {
     "Score": "점수",
     "Total": "합계",
     "VIBRATION ": "진동 ",
-    INTRO_EN: (
-        "오래전, 놈은 모든 것에서 도망쳤습니다. "
-        "수많은 장애물과 생명체를 만났고, 친근한 강아지와 예쁜 아가씨도 만났습니다. "
-        "그 모든 순간이 놈을 행복하게 했습니다."
-    ),
+    # The original a.class stores the opening narration with a leading "R"
+    # control/alignment marker. Preserve that marker and replace only the text.
+    INTRO_PREFIX + INTRO_EN: INTRO_PREFIX + INTRO_KO,
 }
 
 
@@ -242,13 +246,16 @@ def patch_jar(source: Path, output: Path, translations: Path, bridge_source: Pat
         if count != 88:
             raise RuntimeError(f"Patched text.scr has an unexpected string count: {count}")
 
-        if INTRO_EN.encode("utf-8") in zf.read("a.class"):
+        patched_intro = zf.read("a.class")
+        if (INTRO_PREFIX + INTRO_EN).encode("utf-8") in patched_intro:
             raise RuntimeError("Opening story English text is still present in patched a.class")
+        if (INTRO_PREFIX + INTRO_KO).encode("utf-8") not in patched_intro:
+            raise RuntimeError("Opening story Korean text was not written to patched a.class")
 
     print(f"Korean NOM 2 JAR ready: {output}")
     print("  translated text.scr: 88 entries")
     print(f"  patched game classes: {patched_classes}")
-    print("  opening story: Korean")
+    print("  opening story: Korean (original R control prefix preserved)")
     print("  hard-coded menus: Korean")
     print("  Hangul renderer: enlarged 9px anti-aliased J2ME font bridge")
 
