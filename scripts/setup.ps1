@@ -113,12 +113,17 @@ Write-Host "Applying Galaxy S10 touch/buttons/original-icon fixes..."
 python tools/post_patch_ui.py --engine $Engine
 if ($LASTEXITCODE -ne 0) { throw "NOM 2 Galaxy S10 UI post-patch failed." }
 
+Write-Host "Disabling obsolete online leaderboard..."
+python tools/disable_leaderboard.py --engine $Engine
+if ($LASTEXITCODE -ne 0) { throw "NOM 2 leaderboard bypass patch failed." }
+
 Write-Host ""
 Write-Host "NOM 2 port workspace is ready."
 Write-Host "Primary real-device target: Samsung Galaxy S10"
 Write-Host "Korean patch: enabled"
 Write-Host "Original artwork launcher icon: enabled"
 Write-Host "Visible bottom buttons: enabled"
+Write-Host "Online leaderboard: disabled/bypassed"
 Write-Host "Open '$Engine' in Android Studio, or run:"
 Write-Host "  cd $Engine"
 Write-Host "  .\gradlew.bat :app:assembleOpenDebug"
