@@ -42,7 +42,11 @@ def patch_canvas(engine: Path) -> None:
     replace_once(path, updater_old, updater_new, "NOM 2 leaderboard bypass updater")
 
     marker = "\t\tprivate Object nom2NameInput() {\n"
-    helpers = r'''\t\tprivate int nom2LastLeaderboardBypassState = Integer.MIN_VALUE;
+
+    # IMPORTANT: this must be a normal Python string, not a raw string.
+    # Canvas.java needs real tab/newline characters. A raw string would write
+    # literal '\\t' sequences into Java source and cause hundreds of javac errors.
+    helpers = """\t\tprivate int nom2LastLeaderboardBypassState = Integer.MIN_VALUE;
 \t\tprivate long nom2LastLeaderboardBypassAt;
 
 \t\tprivate int nom2StaticInt(String name, int fallback) {
@@ -59,9 +63,7 @@ def patch_canvas(engine: Path) -> None:
 \t\t\t// NOM 2's original cancel paths are:
 \t\t\t//   state 36 (name entry): Y == 9 ? state 9 : state 30
 \t\t\t//   state 37 (upload prompt): Z == 9 ? state 9 : state 36
-\t\t\t// Since the dedicated Android port intentionally disables the dead
-\t\t\t// online leaderboard, collapse state 37 -> 36 -> the same final local
-\t\t\t// destination without ever starting a network request.
+\t\t\t// The Android port disables the dead online leaderboard completely.
 \t\t\tint z = nom2StaticInt("Z", -1);
 \t\t\tif (z == 9) return 9;
 \t\t\tint y = nom2StaticInt("Y", -1);
@@ -108,8 +110,23 @@ def patch_canvas(engine: Path) -> None:
 \t\t\t}
 \t\t}
 
-'''
+"""
     replace_once(path, marker, helpers + marker, "NOM 2 leaderboard bypass helpers")
+
+    # Fail early with a useful message instead of allowing javac to report
+    # hundreds of follow-on syntax errors if escaped indentation is ever
+    # accidentally written into Canvas.java again.
+    patched = path.read_text(encoding="utf-8")
+    bad_tokens = (
+        r"\t\tprivate int nom2LastLeaderboardBypassState",
+        r"\t\tprivate int nom2StaticInt",
+        r"\t\tprivate void skipNom2LeaderboardIfNeeded",
+    )
+    for token in bad_tokens:
+        if token in patched:
+            raise RuntimeError(
+                "Leaderboard patch wrote literal \\t escapes into Canvas.java: " + token
+            )
 
 
 def patch_build_identity(engine: Path) -> None:
