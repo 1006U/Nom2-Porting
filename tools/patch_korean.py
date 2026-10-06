@@ -148,9 +148,10 @@ def compile_font_bridge(source: Path, work: Path) -> bytes:
     )
     (src / "javax" / "microedition" / "lcdui" / "Font.java").write_text(
         "package javax.microedition.lcdui; public class Font { "
+        "public Font(){} public Font(int f,int s,int z,float h){} "
         "public static Font getFont(int f,int s,int z){return new Font();} "
         "public static Font getDefaultFont(){return new Font();} "
-        "public int charWidth(char c){return 10;} }",
+        "public int charWidth(char c){return 7;} }",
         encoding="utf-8",
     )
 
@@ -225,7 +226,7 @@ def patch_jar(source: Path, output: Path, translations: Path, bridge_source: Pat
     print(f"Korean NOM 2 JAR ready: {output}")
     print("  translated text.scr: 88 entries")
     print("  hard-coded menus: Korean")
-    print("  Hangul renderer: Android/J2ME native font bridge")
+    print("  Hangul renderer: compact 7px J2ME font bridge")
 
 
 def main() -> int:
