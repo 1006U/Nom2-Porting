@@ -1,5 +1,8 @@
 # NOM 2 Android Port
 
+> **Current implementation is on the `galaxy-s10` branch.**  
+> Switch to that branch before running the setup/build commands below.
+
 Android porting workspace for **NOM 2 / 놈2** using the open-source J2ME Loader runtime as a compatibility layer.
 
 This repository contains only Android porting glue, configuration, and patches. The original proprietary game JAR is **not committed**. Put your legally obtained copy at `game/nom2.jar` before running setup.
@@ -51,7 +54,12 @@ Requirements:
 - Android Studio with Android SDK
 - JDK compatible with the pinned J2ME Loader/Gradle project
 
-Place your game file here:
+Clone the development branch and place your game file here:
+
+```powershell
+git clone -b galaxy-s10 https://github.com/1006U/Nom2-Porting.git
+cd Nom2-Porting
+```
 
 ```text
 Nom2-Porting/
