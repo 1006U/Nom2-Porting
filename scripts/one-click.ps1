@@ -37,6 +37,7 @@ New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Remove-Item (Join-Path $dist "NOM2-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port2-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port3-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $dist "NOM2-port4-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 
 Push-Location (Join-Path $Root "engine")
 try {
@@ -61,7 +62,7 @@ try {
     }
 
     $finalApk = Join-Path $dist "NOM2-debug.apk"
-    $versionedApk = Join-Path $dist "NOM2-port3-ko-s10-debug.apk"
+    $versionedApk = Join-Path $dist "NOM2-port4-ko-s10-debug.apk"
     Copy-Item $apk.FullName $finalApk -Force
     Copy-Item $apk.FullName $versionedApk -Force
 
@@ -70,9 +71,8 @@ try {
     Write-Host "  $finalApk"
     Write-Host "  $versionedApk"
     Write-Host ""
-    Write-Host "Expected APK identity: versionName=1.0.43-port3-ko-s10, versionCode=103"
-    Write-Host "Expected first-launch marker: nom2-port3-ko-s10-r2"
-    Write-Host "This build includes compact Korean text, state-aware soft keys, and native leaderboard name input."
+    Write-Host "Expected APK identity: versionName=1.0.43-port4-ko-s10, versionCode=104"
+    Write-Host "Online leaderboard is disabled: name registration, score upload, and network-wait states are bypassed."
     Write-Host "Install this newly built APK manually on the Galaxy S10."
 } finally {
     Pop-Location
