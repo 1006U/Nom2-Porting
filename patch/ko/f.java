@@ -24,12 +24,11 @@ public final class f {
         b(path);
         h = "";
 
-        // NOM 2's original bitmap font is only about 5~7 virtual pixels high.
-        // J2ME Loader's SIZE_SMALL resolves to a much larger Android font on a
-        // 176x208 canvas, which made Korean text overlap on Galaxy S10. Use a
-        // free-size J2ME Font close to the original game's bitmap scale.
+        // 9 virtual pixels is large enough to stay readable after the 176x208
+        // canvas is scaled to a Galaxy S10, while still fitting NOM 2's compact
+        // menu/dialog boxes. Font AA is enabled by the launcher profile.
         try {
-            koreanFont = new Font(0, 0, -1, 7.0f);
+            koreanFont = new Font(0, 0, -1, 9.0f);
         } catch (Throwable t) {
             try {
                 koreanFont = Font.getFont(0, 0, 8);
@@ -83,10 +82,9 @@ public final class f {
         if (isNativeChar(ch) && koreanFont != null) {
             try {
                 int w = koreanFont.charWidth(ch);
-                // Keep Hangul compact enough for the original 176-pixel UI.
-                return Math.max(6, Math.min(8, w));
+                return Math.max(7, Math.min(10, w));
             } catch (Throwable ignored) {
-                return 7;
+                return 9;
             }
         }
         return asciiWidth(ch);
@@ -129,8 +127,6 @@ public final class f {
             if (isNativeChar(ch)) {
                 try {
                     if (koreanFont != null) e.setFont(koreanFont);
-                    // 7px free-size font already matches the bitmap baseline;
-                    // only a tiny upward correction is needed.
                     e.drawString(String.valueOf(ch), x + cursor, y - 1, 20);
                 } catch (Throwable ignored) {
                     drawGlyph(asciiGlyph('?'), x + cursor, y);
