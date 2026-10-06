@@ -121,6 +121,10 @@ Write-Host "Finalizing screen-aware Galaxy S10 controls..."
 python tools/finalize_s10_controls.py --engine $Engine
 if ($LASTEXITCODE -ne 0) { throw "NOM 2 final Galaxy S10 controls patch failed." }
 
+Write-Host "Fixing runtime state detection and pre-network leaderboard gate..."
+python tools/fix_runtime_state.py --engine $Engine
+if ($LASTEXITCODE -ne 0) { throw "NOM 2 runtime state patch failed." }
+
 Write-Host ""
 Write-Host "NOM 2 port workspace is ready."
 Write-Host "Primary real-device target: Samsung Galaxy S10"
@@ -129,7 +133,8 @@ Write-Host "Original artwork launcher icon: enabled"
 Write-Host "Gameplay touch anywhere: jump/action"
 Write-Host "Gameplay bottom control: Pause only"
 Write-Host "Menu/story buttons: screen-aware"
-Write-Host "Online leaderboard: disabled/bypassed"
+Write-Host "Runtime state detection: hierarchy-safe"
+Write-Host "Online leaderboard: disabled from W=9 gate through W=36..40"
 Write-Host "Open '$Engine' in Android Studio, or run:"
 Write-Host "  cd $Engine"
 Write-Host "  .\gradlew.bat :app:assembleOpenDebug"
