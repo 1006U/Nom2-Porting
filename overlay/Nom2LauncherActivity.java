@@ -30,11 +30,10 @@ import ru.playsoftware.j2meloader.config.ProfilesManager;
 public final class Nom2LauncherActivity extends Activity {
     private static final String ASSET_JAR = "nom2/nom2.jar";
 
-    // Change this whenever the bundled MIDlet patch changes. J2ME Loader normally
-    // reuses an already-converted MIDlet when MIDlet-Version is unchanged. NOM 2's
-    // Korean patch intentionally preserves the original 1.0.43 game version, so a
-    // separate port revision is required to force one refresh after APK updates.
-    private static final String PORT_REVISION = "nom2-port2-ko-s10-r1";
+    // Increment whenever the bundled MIDlet patch changes. This forces J2ME
+    // Loader to rebuild the converted MIDlet while preserving the original
+    // game's MIDlet-Version and existing RMS save data.
+    private static final String PORT_REVISION = "nom2-port3-ko-s10-r2";
     private static final String PREFS = "nom2_port_launcher";
     private static final String PREF_INSTALLED_REVISION = "installed_revision";
 
@@ -158,14 +157,9 @@ public final class Nom2LauncherActivity extends Activity {
             profile = new ProfileModel(configDir);
         }
 
-        // NOM 2 was authored for the classic 176x208 portrait MIDP canvas.
         profile.screenWidth = 176;
         profile.screenHeight = 208;
-
-        // Galaxy S10 is the primary device target. Keep the complete original
-        // image visible and enlarge it to the biggest possible rectangle in
-        // either portrait or landscape without stretching or cropping.
-        profile.orientation = 1; // FULL_SENSOR in J2ME Loader 1.8.2
+        profile.orientation = 1;
         profile.screenScaleToFit = true;
         profile.screenKeepAspectRatio = true;
         profile.screenScaleType = 1;
@@ -175,7 +169,6 @@ public final class Nom2LauncherActivity extends Activity {
         profile.screenBackgroundColor = 0x000000;
         profile.screenFilter = false;
 
-        // Android-native touch handling replaces J2ME Loader's virtual keypad.
         profile.showKeyboard = false;
         profile.touchInput = false;
         profile.graphicsMode = 1;
