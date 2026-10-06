@@ -14,34 +14,130 @@ def replace_regex(path: Path, pattern: str, replacement: str, description: str) 
     path.write_text(updated, encoding="utf-8")
 
 
+def replace_java_method(path: Path, signature: str, replacement: str, description: str) -> None:
+    """Replace exactly one Java method by brace matching instead of a broad regex.
+
+    Canvas.java is patched by several scripts before this one runs. The previous
+    implementation matched from handleNom2Touch() all the way to ViewCallbacks(),
+    which accidentally deleted the NOM2 helper fields/methods inserted in between.
+    """
+    text = path.read_text(encoding="utf-8")
+    start = text.find(signature)
+    if start < 0:
+        raise RuntimeError(f"Could not find {description} signature in {path}")
+
+    brace = text.find("{", start + len(signature) - 1)
+    if brace < 0:
+        raise RuntimeError(f"Could not find opening brace for {description} in {path}")
+
+    depth = 0
+    in_string = False
+    in_char = False
+    escaped = False
+    line_comment = False
+    block_comment = False
+    i = brace
+
+    while i < len(text):
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+
+        if line_comment:
+            if ch == "\n":
+                line_comment = False
+            i += 1
+            continue
+
+        if block_comment:
+            if ch == "*" and nxt == "/":
+                block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            i += 1
+            continue
+
+        if in_char:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == "'":
+                in_char = False
+            i += 1
+            continue
+
+        if ch == "/" and nxt == "/":
+            line_comment = True
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            block_comment = True
+            i += 2
+            continue
+        if ch == '"':
+            in_string = True
+            i += 1
+            continue
+        if ch == "'":
+            in_char = True
+            i += 1
+            continue
+
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                updated = text[:start] + replacement + text[end:]
+                path.write_text(updated, encoding="utf-8")
+                return
+        i += 1
+
+    raise RuntimeError(f"Could not find closing brace for {description} in {path}")
+
+
 def insert_before_first_method(path: Path, helper: str) -> None:
-    """Insert helper methods without depending on one exact patched Canvas layout."""
+    """Insert helper immediately before the actual nom2State() declaration."""
     text = path.read_text(encoding="utf-8")
     if "private boolean nom2PauseOverlayVisible()" in text:
         return
 
-    # Canvas.java has already been modified by prepare_engine.py,
-    # post_patch_ui.py and disable_leaderboard.py before this script runs.
-    # Do not require one exact whitespace/newline form. Prefer nom2State(),
-    # then fall back to stable NOM2 helper/member anchors added by earlier steps.
-    patterns = (
-        r"(?m)^[ \t]*private\s+int\s+nom2State\s*\(\s*\)\s*\{",
-        r"(?m)^[ \t]*private\s+Object\s+nom2NameInput\s*\(\s*\)\s*\{",
-        r"(?m)^[ \t]*private\s+LinearLayout\s+nom2ButtonBar\s*;",
+    # Do a direct declaration search. A plain `nom2State` occurrence may be only
+    # a call inside handleNom2Touch(), so locate the declaration itself and then
+    # insert at its line start. This avoids depending on indentation formatting.
+    declaration_needles = (
+        "private int nom2State()",
+        "private int nom2State ()",
     )
-
-    for pattern in patterns:
-        match = re.search(pattern, text)
-        if match:
-            updated = text[:match.start()] + helper + text[match.start():]
+    for needle in declaration_needles:
+        pos = text.find(needle)
+        if pos >= 0:
+            line_start = text.rfind("\n", 0, pos) + 1
+            updated = text[:line_start] + helper + text[line_start:]
             path.write_text(updated, encoding="utf-8")
             return
 
-    # Useful diagnostics if a future engine change moves these helpers again.
+    # Fallback: regex only for the declaration, never for a whole method block.
+    match = re.search(r"(?m)^[ \t]*private\s+int\s+nom2State\s*\(\s*\)\s*\{", text)
+    if match:
+        updated = text[:match.start()] + helper + text[match.start():]
+        path.write_text(updated, encoding="utf-8")
+        return
+
     nearby = []
     for needle in ("nom2State", "nom2NameInput", "nom2ButtonBar", "nom2LastButtonState"):
-        pos = text.find(needle)
-        nearby.append(f"{needle}={pos}")
+        nearby.append(f"{needle}={text.find(needle)}")
     raise RuntimeError(
         "Could not find NOM 2 helper insertion point after prior Canvas patches ("
         + ", ".join(nearby)
@@ -65,8 +161,6 @@ def patch_canvas(engine: Path) -> None:
     # Gameplay rule for the dedicated Galaxy S10 port:
     #   * every tap anywhere inside the game/letterbox = NUM5 action/jump
     #   * no swipe or soft-key zones while actively playing
-    # This deliberately overrides the older letterbox-softkey behavior which
-    # made normal gameplay taps open the pause menu on tall phones.
     touch = """\t\tprivate boolean handleNom2Touch(MotionEvent event) {
 \t\t\tint action = event.getActionMasked();
 \t\t\tint state = nom2State();
@@ -142,18 +236,17 @@ def patch_canvas(engine: Path) -> None:
 \t\t\t\tfireNom2Key(KEY_NUM5);
 \t\t\t}
 \t\t\treturn true;
-\t\t}
+\t\t}"""
 
-\t\tpublic ViewCallbacks(View view) {"""
-    replace_regex(
+    # Replace only handleNom2Touch(). Do not consume the helper fields/methods
+    # that post_patch_ui.py inserted between this method and ViewCallbacks().
+    replace_java_method(
         path,
-        r"\t\tprivate boolean handleNom2Touch\(MotionEvent event\) \{.*?\n\t\t\}\n\n\t\tpublic ViewCallbacks\(View view\) \{",
+        "\t\tprivate boolean handleNom2Touch(MotionEvent event) {",
         touch,
         "Galaxy S10 gameplay-anywhere jump touch",
     )
 
-    # Add a reliable pause-overlay detector. NOM 2 draws its in-game pause menu
-    # from e.f(Graphics) while the obfuscated static flag bK is true.
     helper = """\t\tprivate boolean nom2BooleanField(String name) {
 \t\t\ttry {
 \t\t\t\tjava.lang.reflect.Field field = Canvas.this.getClass().getDeclaredField(name);
@@ -171,11 +264,6 @@ def patch_canvas(engine: Path) -> None:
 """
     insert_before_first_method(path, helper)
 
-    # Screen-matched bottom controls:
-    # normal gameplay -> one Pause button only
-    # in-game pause overlay -> Select / Back
-    # story/ending confirmation states -> Confirm only
-    # normal menus -> Select / Back
     refresh = """\t\tprivate void refreshNom2Buttons() {
 \t\t\tif (nom2ButtonBar == null) return;
 \t\t\tint state = nom2State();
@@ -189,18 +277,14 @@ def patch_canvas(engine: Path) -> None:
 \t\t\tnom2BackButton.setVisibility(View.GONE);
 
 \t\t\tif ((state == 0 || state == 20) && !pauseOverlay) {
-\t\t\t\t// Gameplay itself needs no action button: tapping anywhere jumps.
 \t\t\t\tnom2OkButton.setText("일시정지");
 \t\t\t} else if (pauseOverlay) {
 \t\t\t\tnom2OkButton.setText("선택");
 \t\t\t\tnom2BackButton.setText("뒤로");
 \t\t\t\tnom2BackButton.setVisibility(View.VISIBLE);
 \t\t\t} else if (state >= 31 && state <= 35) {
-\t\t\t\t// Story/ending screens draw a centered OK prompt.
 \t\t\t\tnom2OkButton.setText("확인");
 \t\t\t} else if (state >= 36 && state <= 40) {
-\t\t\t\t// The online leaderboard is disabled by disable_leaderboard.py;
-\t\t\t\t// hide misleading controls during the very short bypass transition.
 \t\t\t\tnom2OkButton.setVisibility(View.GONE);
 \t\t\t} else {
 \t\t\t\tnom2OkButton.setText("선택");
@@ -216,7 +300,6 @@ def patch_canvas(engine: Path) -> None:
         "screen-matched NOM 2 bottom buttons",
     )
 
-    # Rewrite native button actions to match the labels above.
     text = path.read_text(encoding="utf-8")
     listener_pattern = re.compile(
         r"\t\t\tnom2OkButton\.setOnClickListener\(v -> \{.*?"
@@ -227,7 +310,6 @@ def patch_canvas(engine: Path) -> None:
 \t\t\t\tint state = nom2State();
 \t\t\t\tboolean pauseOverlay = nom2PauseOverlayVisible();
 \t\t\t\tif ((state == 0 || state == 20) && !pauseOverlay) {
-\t\t\t\t\t// Dedicated pause button. Gameplay action/jump is touch-anywhere.
 \t\t\t\t\tfireNom2Key(KEY_SOFT_LEFT);
 \t\t\t\t} else if (pauseOverlay || (state >= 31 && state <= 35)) {
 \t\t\t\t\tfireNom2Key(KEY_NUM5);
@@ -242,7 +324,6 @@ def patch_canvas(engine: Path) -> None:
         raise RuntimeError("Could not rewrite NOM 2 native button listeners")
     path.write_text(updated, encoding="utf-8")
 
-    # Mark the resulting Canvas so repeated local setup runs are easy to diagnose.
     text = path.read_text(encoding="utf-8")
     if "NOM2_FINAL_S10_CONTROLS" not in text:
         member_pattern = re.search(r"(?m)^[ \t]*private\s+LinearLayout\s+nom2ButtonBar\s*;", text)
@@ -256,6 +337,8 @@ def patch_canvas(engine: Path) -> None:
     final_text = path.read_text(encoding="utf-8")
     required = (
         "private boolean nom2PauseOverlayVisible()",
+        "private int nom2State()",
+        "private LinearLayout nom2ButtonBar",
         "fireNom2Key(KEY_NUM5);",
         'nom2OkButton.setText("일시정지")',
         "NOM2_FINAL_S10_CONTROLS",
