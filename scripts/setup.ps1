@@ -117,12 +117,18 @@ Write-Host "Disabling obsolete online leaderboard..."
 python tools/disable_leaderboard.py --engine $Engine
 if ($LASTEXITCODE -ne 0) { throw "NOM 2 leaderboard bypass patch failed." }
 
+Write-Host "Finalizing screen-aware Galaxy S10 controls..."
+python tools/finalize_s10_controls.py --engine $Engine
+if ($LASTEXITCODE -ne 0) { throw "NOM 2 final Galaxy S10 controls patch failed." }
+
 Write-Host ""
 Write-Host "NOM 2 port workspace is ready."
 Write-Host "Primary real-device target: Samsung Galaxy S10"
-Write-Host "Korean patch: enabled"
+Write-Host "Korean patch: enabled (including opening story)"
 Write-Host "Original artwork launcher icon: enabled"
-Write-Host "Visible bottom buttons: enabled"
+Write-Host "Gameplay touch anywhere: jump/action"
+Write-Host "Gameplay bottom control: Pause only"
+Write-Host "Menu/story buttons: screen-aware"
 Write-Host "Online leaderboard: disabled/bypassed"
 Write-Host "Open '$Engine' in Android Studio, or run:"
 Write-Host "  cd $Engine"
