@@ -13,16 +13,48 @@ This repository contains only Android porting glue, configuration, and patches. 
 - Fullscreen, maximum aspect-fit scaling without stretching or cropping
 - Portrait/landscape sensor rotation
 - No J2ME virtual keypad
-- Touch controls:
-  - Tap on the game surface -> J2ME `5` / OK / action
-  - Swipe up/down/left/right -> J2ME `2/8/4/6`
-  - Bottom-left letterbox -> left soft key `-6`
-  - Bottom-right letterbox -> right soft key `-7`
-- Gamepad controls:
-  - D-pad / left stick -> `2/4/6/8`
-  - A / X / Y / R1 / R2 / stick click -> `5`
-  - B / Android Back -> right soft key `-7`
-  - Start / Menu / Select -> left soft key `-6`
+- Korean patch is generated automatically as `game/generated/nom2-ko.jar`
+- Original launcher artwork is used without redrawing/cropping/recoloring
+- Visible native bottom buttons are shown below the game surface
+
+## Controls
+
+Touch controls:
+
+- Tap on the game surface -> J2ME `5` / OK / action
+- Swipe up/down/left/right -> J2ME `2/8/4/6`
+- Bottom-left native button -> left soft key `-6` (OK/menu/pause depending on game state)
+- Bottom-right native button -> right soft key `-7` / Back
+- Galaxy S10 swipe threshold is tuned to a fixed density-aware value instead of a percentage of the full screen
+
+Gamepad controls:
+
+- D-pad / left stick -> `2/4/6/8`
+- A / X / Y / R1 / R2 / stick click -> `5`
+- B / Android Back -> right soft key `-7`
+- Start / Menu / Select -> left soft key `-6`
+
+## Korean patch
+
+The source JAR stores its messages in `text/text.scr` and uses a custom bitmap font class (`gvl.f`). The build now:
+
+1. translates all 88 `text.scr` entries into Korean,
+2. translates important hard-coded menu labels such as `EXIT`, `MAIN MENU`, `RESULT`, `SOUND`, and `VIBRATION`,
+3. preserves the original bitmap glyph renderer for ASCII,
+4. replaces only the font helper with a Korean-capable bridge so Hangul is drawn through the J2ME/Android system font,
+5. keeps `game/nom2.jar` untouched and creates `game/generated/nom2-ko.jar` for the APK.
+
+## Original APK icon
+
+Put the untouched artwork in the recommended location:
+
+```text
+branding/app_icon.png
+```
+
+The build also accepts JPG/JPEG and a few fallback filenames documented in `branding/README.md`.
+
+The image is **not regenerated or redesigned**. The script only preserves its aspect ratio and creates the Android `mipmap-mdpi` through `mipmap-xxxhdpi` sizes. If the source artwork is not square, its complete composition is centered on a square canvas rather than cropped or stretched.
 
 ## Runtime strategy
 
@@ -49,20 +81,16 @@ Requirements:
 - Git
 - Python 3.10+
 - Android Studio with Android SDK
-- JDK compatible with the pinned J2ME Loader/Gradle project
+- Android Studio bundled JDK or another JDK with `javac`
 
-Place your game file here:
+Place your original files like this:
 
 ```text
 Nom2-Porting/
   game/
     nom2.jar
-```
-
-Prepare the Android project:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+  branding/
+    app_icon.png
 ```
 
 Build an APK without ADB/USB debugging:
@@ -70,6 +98,15 @@ Build an APK without ADB/USB debugging:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\one-click.ps1
 ```
+
+`setup.ps1` automatically:
+
+- detects the Android SDK and creates `engine/local.properties`,
+- installs Pillow if needed,
+- creates the Korean-patched JAR,
+- prepares J2ME Loader,
+- applies the Galaxy S10 touch/button fixes,
+- generates launcher mipmaps from the untouched original artwork.
 
 The resulting APK is copied to:
 
@@ -83,12 +120,6 @@ You can also build from Android Studio by opening the generated `engine` directo
 cd engine
 .\gradlew.bat :app:assembleOpenDebug
 ```
-
-## Current port stage
-
-This first NOM 2 port establishes a runnable Galaxy S10 baseline: launcher, local bundled JAR install, private runtime storage, fullscreen aspect-fit rendering, tap/swipe controls, gamepad controls, app naming, and APK-only build flow.
-
-NOM 1's exact direct-menu-touch implementation depends on NOM 1-specific obfuscated fields/methods and is intentionally **not copied blindly**. After Galaxy S10 device testing, NOM 2 menu state can be mapped separately for exact direct-item touch and context-sensitive bottom buttons.
 
 ## Upstream
 
