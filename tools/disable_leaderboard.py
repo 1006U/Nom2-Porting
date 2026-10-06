@@ -6,8 +6,8 @@ import re
 from pathlib import Path
 
 
-PORT_VERSION_CODE = 104
-PORT_VERSION_NAME = "1.0.43-port4-ko-s10"
+PORT_VERSION_CODE = 105
+PORT_VERSION_NAME = "1.0.43-port5-ko-s10"
 
 
 def replace_once(path: Path, old: str, new: str, description: str) -> None:
@@ -43,9 +43,6 @@ def patch_canvas(engine: Path) -> None:
 
     marker = "\t\tprivate Object nom2NameInput() {\n"
 
-    # IMPORTANT: this must be a normal Python string, not a raw string.
-    # Canvas.java needs real tab/newline characters. A raw string would write
-    # literal '\\t' sequences into Java source and cause hundreds of javac errors.
     helpers = """\t\tprivate int nom2LastLeaderboardBypassState = Integer.MIN_VALUE;
 \t\tprivate long nom2LastLeaderboardBypassAt;
 
@@ -60,10 +57,6 @@ def patch_canvas(engine: Path) -> None:
 \t\t}
 
 \t\tprivate int nom2LeaderboardReturnState() {
-\t\t\t// NOM 2's original cancel paths are:
-\t\t\t//   state 36 (name entry): Y == 9 ? state 9 : state 30
-\t\t\t//   state 37 (upload prompt): Z == 9 ? state 9 : state 36
-\t\t\t// The Android port disables the dead online leaderboard completely.
 \t\t\tint z = nom2StaticInt("Z", -1);
 \t\t\tif (z == 9) return 9;
 \t\t\tint y = nom2StaticInt("Y", -1);
@@ -105,7 +98,6 @@ def patch_canvas(engine: Path) -> None:
 \t\t\t\t\t+ " -> local state " + targetState);
 
 \t\t\tif (!nom2InvokeState(targetState) && (state == 36 || state == 37)) {
-\t\t\t\t// Safe fallback: use the game's own Cancel/No soft-key path.
 \t\t\t\tfireNom2Key(KEY_SOFT_RIGHT);
 \t\t\t}
 \t\t}
@@ -113,9 +105,6 @@ def patch_canvas(engine: Path) -> None:
 """
     replace_once(path, marker, helpers + marker, "NOM 2 leaderboard bypass helpers")
 
-    # Fail early with a useful message instead of allowing javac to report
-    # hundreds of follow-on syntax errors if escaped indentation is ever
-    # accidentally written into Canvas.java again.
     patched = path.read_text(encoding="utf-8")
     bad_tokens = (
         r"\t\tprivate int nom2LastLeaderboardBypassState",
@@ -151,7 +140,7 @@ def patch_build_identity(engine: Path) -> None:
             f"versionCode {PORT_VERSION_CODE}" not in text
             or f'versionName "{PORT_VERSION_NAME}"' not in text
         ):
-            raise RuntimeError("Could not set NOM 2 port4 build identity")
+            raise RuntimeError("Could not set NOM 2 port5 build identity")
     else:
         path.write_text(text2, encoding="utf-8")
 
