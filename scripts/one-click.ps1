@@ -38,6 +38,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "NOM 2 pause touch/upscale patch failed."
 }
 
+Write-Host "Applying Korean direct-touch main menu..."
+python tools/patch_main_menu_korean_touch.py --engine engine
+if ($LASTEXITCODE -ne 0) {
+    throw "NOM 2 Korean main-menu patch failed."
+}
+
 $dist = Join-Path $Root "dist"
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Remove-Item (Join-Path $dist "NOM2-debug.apk") -Force -ErrorAction SilentlyContinue
@@ -47,6 +53,7 @@ Remove-Item (Join-Path $dist "NOM2-port4-ko-s10-debug.apk") -Force -ErrorAction 
 Remove-Item (Join-Path $dist "NOM2-port5-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port6-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port7-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $dist "NOM2-port8-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 
 Push-Location (Join-Path $Root "engine")
 try {
@@ -71,7 +78,7 @@ try {
     }
 
     $finalApk = Join-Path $dist "NOM2-debug.apk"
-    $versionedApk = Join-Path $dist "NOM2-port7-ko-s10-debug.apk"
+    $versionedApk = Join-Path $dist "NOM2-port8-ko-s10-debug.apk"
     Copy-Item $apk.FullName $finalApk -Force
     Copy-Item $apk.FullName $versionedApk -Force
 
@@ -80,10 +87,12 @@ try {
     Write-Host "  $finalApk"
     Write-Host "  $versionedApk"
     Write-Host ""
-    Write-Host "Expected APK identity: versionName=1.0.43-port7-ko-s10, versionCode=107"
-    Write-Host "Expected first-launch marker: nom2-port7-ko-s10-r6"
+    Write-Host "Expected APK identity: versionName=1.0.43-port8-ko-s10, versionCode=108"
+    Write-Host "Expected first-launch marker: nom2-port8-ko-s10-r7"
     Write-Host "Gameplay: tap anywhere to jump/action; bottom bar shows Pause only."
     Write-Host "Pause menu: touch the visible menu row directly to select and activate it."
+    Write-Host "Main menu: Korean overlay with directly touchable menu items."
+    Write-Host "Main menu selection: native cm=1..9 is set before NUM5 activation."
     Write-Host "Display: original 176x208 layout preserved, maximum aspect-fit output upscale enabled."
     Write-Host "Upscale filter: enabled for the Galaxy S10 output surface."
     Write-Host "Opening story: Korean patched; Korean font enlarged and anti-aliased."
