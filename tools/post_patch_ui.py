@@ -122,22 +122,26 @@ def find_icon_source(root: Path) -> Path:
         root / "branding" / "icon.jpg",
         root / "overlay" / "icon.png",
         root / "app_icon.png",
+        root / "app_icon.jpg",
+        root / "app_icon.jpeg",
         root / "icon.png",
+        root / "icon.jpg",
+        root / "icon.jpeg",
     ]
     for candidate in candidates:
         if candidate.is_file():
             return candidate
 
-    branding = root / "branding"
-    if branding.is_dir():
-        for candidate in sorted(branding.iterdir()):
-            if candidate.is_file() and candidate.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}:
-                return candidate
+    for directory in (root / "branding", root):
+        if directory.is_dir():
+            for candidate in sorted(directory.iterdir()):
+                if candidate.is_file() and candidate.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}:
+                    return candidate
 
     raise FileNotFoundError(
         "Original NOM 2 icon was not found. Put the untouched image at "
         "branding/app_icon.png (recommended), branding/app_icon.jpg, overlay/icon.png, "
-        "or app_icon.png."
+        "or any PNG/JPG image in the repository root."
     )
 
 
