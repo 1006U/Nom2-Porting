@@ -39,6 +39,7 @@ Remove-Item (Join-Path $dist "NOM2-port2-ko-s10-debug.apk") -Force -ErrorAction 
 Remove-Item (Join-Path $dist "NOM2-port3-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port4-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port5-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $dist "NOM2-port6-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 
 Push-Location (Join-Path $Root "engine")
 try {
@@ -63,7 +64,7 @@ try {
     }
 
     $finalApk = Join-Path $dist "NOM2-debug.apk"
-    $versionedApk = Join-Path $dist "NOM2-port5-ko-s10-debug.apk"
+    $versionedApk = Join-Path $dist "NOM2-port6-ko-s10-debug.apk"
     Copy-Item $apk.FullName $finalApk -Force
     Copy-Item $apk.FullName $versionedApk -Force
 
@@ -72,11 +73,12 @@ try {
     Write-Host "  $finalApk"
     Write-Host "  $versionedApk"
     Write-Host ""
-    Write-Host "Expected APK identity: versionName=1.0.43-port5-ko-s10, versionCode=105"
-    Write-Host "Expected first-launch marker: nom2-port5-ko-s10-r4"
+    Write-Host "Expected APK identity: versionName=1.0.43-port6-ko-s10, versionCode=106"
+    Write-Host "Expected first-launch marker: nom2-port6-ko-s10-r5"
     Write-Host "Gameplay: tap anywhere to jump/action; bottom bar shows Pause only."
+    Write-Host "Menu/pause controls use the actual NOM 2 runtime state."
     Write-Host "Opening story: Korean patched; Korean font enlarged and anti-aliased."
-    Write-Host "Online leaderboard: disabled/bypassed."
+    Write-Host "Online leaderboard: bypassed from the W=9 gate before any network flow."
     Write-Host "Install this newly built APK manually on the Galaxy S10."
 } finally {
     Pop-Location
