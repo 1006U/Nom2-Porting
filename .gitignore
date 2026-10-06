@@ -1,8 +1,9 @@
 # Generated J2ME Loader checkout
 engine/
 
-# Original game binary (do not publish)
+# Original / generated game binaries (do not publish)
 game/*.jar
+game/generated/
 !game/README.md
 
 # Generated APK output
