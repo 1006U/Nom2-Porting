@@ -32,6 +32,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "NOM 2 setup failed."
 }
 
+Write-Host "Applying direct pause-menu touch and Galaxy S10 upscale..."
+python tools/patch_pause_touch_upscale.py --engine engine
+if ($LASTEXITCODE -ne 0) {
+    throw "NOM 2 pause touch/upscale patch failed."
+}
+
 $dist = Join-Path $Root "dist"
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Remove-Item (Join-Path $dist "NOM2-debug.apk") -Force -ErrorAction SilentlyContinue
@@ -40,6 +46,7 @@ Remove-Item (Join-Path $dist "NOM2-port3-ko-s10-debug.apk") -Force -ErrorAction 
 Remove-Item (Join-Path $dist "NOM2-port4-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port5-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port6-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $dist "NOM2-port7-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 
 Push-Location (Join-Path $Root "engine")
 try {
@@ -64,7 +71,7 @@ try {
     }
 
     $finalApk = Join-Path $dist "NOM2-debug.apk"
-    $versionedApk = Join-Path $dist "NOM2-port6-ko-s10-debug.apk"
+    $versionedApk = Join-Path $dist "NOM2-port7-ko-s10-debug.apk"
     Copy-Item $apk.FullName $finalApk -Force
     Copy-Item $apk.FullName $versionedApk -Force
 
@@ -73,10 +80,12 @@ try {
     Write-Host "  $finalApk"
     Write-Host "  $versionedApk"
     Write-Host ""
-    Write-Host "Expected APK identity: versionName=1.0.43-port6-ko-s10, versionCode=106"
-    Write-Host "Expected first-launch marker: nom2-port6-ko-s10-r5"
+    Write-Host "Expected APK identity: versionName=1.0.43-port7-ko-s10, versionCode=107"
+    Write-Host "Expected first-launch marker: nom2-port7-ko-s10-r6"
     Write-Host "Gameplay: tap anywhere to jump/action; bottom bar shows Pause only."
-    Write-Host "Menu/pause controls use the actual NOM 2 runtime state."
+    Write-Host "Pause menu: touch the visible menu row directly to select and activate it."
+    Write-Host "Display: original 176x208 layout preserved, maximum aspect-fit output upscale enabled."
+    Write-Host "Upscale filter: enabled for the Galaxy S10 output surface."
     Write-Host "Opening story: Korean patched; Korean font enlarged and anti-aliased."
     Write-Host "Online leaderboard: bypassed from the W=9 gate before any network flow."
     Write-Host "Install this newly built APK manually on the Galaxy S10."
