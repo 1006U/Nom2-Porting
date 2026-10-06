@@ -12,40 +12,25 @@ $Tag = "1.8.2"
 
 function Resolve-AndroidSdkPath {
     $Candidates = @()
-
-    if ($env:ANDROID_HOME) {
-        $Candidates += $env:ANDROID_HOME
-    }
-    if ($env:ANDROID_SDK_ROOT) {
-        $Candidates += $env:ANDROID_SDK_ROOT
-    }
-    if ($env:LOCALAPPDATA) {
-        $Candidates += (Join-Path $env:LOCALAPPDATA "Android\Sdk")
-    }
-    if ($env:USERPROFILE) {
-        $Candidates += (Join-Path $env:USERPROFILE "AppData\Local\Android\Sdk")
-    }
+    if ($env:ANDROID_HOME) { $Candidates += $env:ANDROID_HOME }
+    if ($env:ANDROID_SDK_ROOT) { $Candidates += $env:ANDROID_SDK_ROOT }
+    if ($env:LOCALAPPDATA) { $Candidates += (Join-Path $env:LOCALAPPDATA "Android\Sdk") }
+    if ($env:USERPROFILE) { $Candidates += (Join-Path $env:USERPROFILE "AppData\Local\Android\Sdk") }
 
     foreach ($Candidate in ($Candidates | Select-Object -Unique)) {
-        if ([string]::IsNullOrWhiteSpace($Candidate)) {
-            continue
-        }
-
+        if ([string]::IsNullOrWhiteSpace($Candidate)) { continue }
         $Expanded = [Environment]::ExpandEnvironmentVariables($Candidate)
         if (Test-Path -LiteralPath $Expanded -PathType Container) {
             return (Resolve-Path -LiteralPath $Expanded).Path
         }
     }
-
     return $null
 }
 
 function Ensure-AndroidLocalProperties {
     param([string]$EnginePath)
-
     $LocalProperties = Join-Path $EnginePath "local.properties"
 
-    # Keep a valid existing sdk.dir. Android Studio may already have created it.
     if (Test-Path -LiteralPath $LocalProperties) {
         $Existing = Get-Content -LiteralPath $LocalProperties -ErrorAction SilentlyContinue
         foreach ($Line in $Existing) {
@@ -74,8 +59,6 @@ You can also set ANDROID_HOME or ANDROID_SDK_ROOT manually.
 "@
     }
 
-    # Gradle local.properties accepts forward slashes on Windows and avoids
-    # backslash escaping issues such as C:\\Users\\... .
     $GradleSdkPath = $SdkPath -replace '\\', '/'
     "sdk.dir=$GradleSdkPath" | Set-Content -LiteralPath $LocalProperties -Encoding ASCII
     Write-Host "Android SDK detected: $SdkPath"
@@ -89,9 +72,7 @@ if (-not (Test-Path $Jar)) {
 if (-not (Test-Path (Join-Path $Engine ".git"))) {
     Write-Host "Cloning J2ME Loader $Tag..."
     git clone --depth 1 --branch $Tag $Upstream $Engine
-    if ($LASTEXITCODE -ne 0) {
-        throw "Could not clone J2ME Loader."
-    }
+    if ($LASTEXITCODE -ne 0) { throw "Could not clone J2ME Loader." }
 } else {
     Write-Host "Using existing engine checkout: $Engine"
     Write-Host "Refreshing upstream files patched by NOM 2..."
@@ -105,23 +86,35 @@ if (-not (Test-Path (Join-Path $Engine ".git"))) {
     )
     foreach ($File in $PatchedUpstreamFiles) {
         git -C $Engine checkout -- $File
-        if ($LASTEXITCODE -ne 0) {
-            throw ("Could not restore upstream engine file: " + $File)
-        }
+        if ($LASTEXITCODE -ne 0) { throw ("Could not restore upstream engine file: " + $File) }
     }
 }
 
 Ensure-AndroidLocalProperties -EnginePath $Engine
 
-Write-Host "Preparing Galaxy S10 NOM 2 engine..."
-python tools/prepare_engine.py --engine $Engine --jar $Jar
-if ($LASTEXITCODE -ne 0) {
-    throw "NOM 2 engine patch failed."
+Write-Host "Checking icon resize dependency (Pillow)..."
+$PillowInstalled = python -c "import importlib.util; print('yes' if importlib.util.find_spec('PIL') else 'no')"
+if ($LASTEXITCODE -ne 0) { throw "Python could not check for Pillow." }
+if ($PillowInstalled.Trim() -ne "yes") {
+    python -m pip install --user Pillow
+    if ($LASTEXITCODE -ne 0) { throw "Could not install Pillow. Run manually: python -m pip install --user Pillow" }
 }
+
+$PatchedJar = "game/generated/nom2-ko.jar"
+Write-Host "Creating Korean NOM 2 JAR..."
+python tools/patch_korean.py --input $Jar --output $PatchedJar
+if ($LASTEXITCODE -ne 0) { throw "NOM 2 Korean patch failed." }
+
+Write-Host "Preparing Galaxy S10 NOM 2 engine..."
+python tools/prepare_engine.py --engine $Engine --jar $PatchedJar
+if ($LASTEXITCODE -ne 0) { throw "NOM 2 engine patch failed." }
 
 Write-Host ""
 Write-Host "NOM 2 port workspace is ready."
 Write-Host "Primary real-device target: Samsung Galaxy S10"
+Write-Host "Korean patch: enabled"
+Write-Host "Original artwork launcher icon: enabled"
+Write-Host "Visible bottom buttons: enabled"
 Write-Host "Open '$Engine' in Android Studio, or run:"
 Write-Host "  cd $Engine"
 Write-Host "  .\gradlew.bat :app:assembleOpenDebug"
