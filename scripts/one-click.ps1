@@ -38,6 +38,7 @@ Remove-Item (Join-Path $dist "NOM2-debug.apk") -Force -ErrorAction SilentlyConti
 Remove-Item (Join-Path $dist "NOM2-port2-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port3-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $dist "NOM2-port4-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $dist "NOM2-port5-ko-s10-debug.apk") -Force -ErrorAction SilentlyContinue
 
 Push-Location (Join-Path $Root "engine")
 try {
@@ -48,7 +49,7 @@ try {
     }
 
     Write-Host "Building fresh self-contained NOM 2 APK..."
-    & .\gradlew.bat :app:assembleOpenDebug
+    & .\gradlew.bat :app:assembleOpenDebug --stacktrace
     if ($LASTEXITCODE -ne 0) {
         throw "APK build failed."
     }
@@ -62,7 +63,7 @@ try {
     }
 
     $finalApk = Join-Path $dist "NOM2-debug.apk"
-    $versionedApk = Join-Path $dist "NOM2-port4-ko-s10-debug.apk"
+    $versionedApk = Join-Path $dist "NOM2-port5-ko-s10-debug.apk"
     Copy-Item $apk.FullName $finalApk -Force
     Copy-Item $apk.FullName $versionedApk -Force
 
@@ -71,8 +72,11 @@ try {
     Write-Host "  $finalApk"
     Write-Host "  $versionedApk"
     Write-Host ""
-    Write-Host "Expected APK identity: versionName=1.0.43-port4-ko-s10, versionCode=104"
-    Write-Host "Online leaderboard is disabled: name registration, score upload, and network-wait states are bypassed."
+    Write-Host "Expected APK identity: versionName=1.0.43-port5-ko-s10, versionCode=105"
+    Write-Host "Expected first-launch marker: nom2-port5-ko-s10-r4"
+    Write-Host "Gameplay: tap anywhere to jump/action; bottom bar shows Pause only."
+    Write-Host "Opening story: Korean patched; Korean font enlarged and anti-aliased."
+    Write-Host "Online leaderboard: disabled/bypassed."
     Write-Host "Install this newly built APK manually on the Galaxy S10."
 } finally {
     Pop-Location
