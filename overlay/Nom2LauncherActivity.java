@@ -33,7 +33,7 @@ public final class Nom2LauncherActivity extends Activity {
     // Increment whenever the bundled MIDlet patch changes. This forces J2ME
     // Loader to rebuild the converted MIDlet while preserving the original
     // game's MIDlet-Version and existing RMS save data.
-    private static final String PORT_REVISION = "nom2-port3-ko-s10-r2";
+    private static final String PORT_REVISION = "nom2-port5-ko-s10-r4";
     private static final String PREFS = "nom2_port_launcher";
     private static final String PREF_INSTALLED_REVISION = "installed_revision";
 
@@ -168,6 +168,14 @@ public final class Nom2LauncherActivity extends Activity {
         profile.forceFullscreen = true;
         profile.screenBackgroundColor = 0x000000;
         profile.screenFilter = false;
+
+        // Keep the original pixel-art canvas sharp, but render Korean glyphs
+        // with anti-aliasing before the final aspect-fit scale-up.
+        profile.fontAA = true;
+        profile.fontApplyDimensions = false;
+        profile.fontSizeSmall = 9;
+        profile.fontSizeMedium = 10;
+        profile.fontSizeLarge = 12;
 
         profile.showKeyboard = false;
         profile.touchInput = false;
