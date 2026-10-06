@@ -33,7 +33,7 @@ public final class Nom2LauncherActivity extends Activity {
     // Increment whenever the bundled MIDlet patch changes. This forces J2ME
     // Loader to rebuild the converted MIDlet while preserving the original
     // game's MIDlet-Version and existing RMS save data.
-    private static final String PORT_REVISION = "nom2-port5-ko-s10-r4";
+    private static final String PORT_REVISION = "nom2-port6-ko-s10-r5";
     private static final String PREFS = "nom2_port_launcher";
     private static final String PREF_INSTALLED_REVISION = "installed_revision";
 
