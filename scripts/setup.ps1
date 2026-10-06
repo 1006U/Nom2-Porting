@@ -109,6 +109,10 @@ Write-Host "Preparing Galaxy S10 NOM 2 engine..."
 python tools/prepare_engine.py --engine $Engine --jar $PatchedJar
 if ($LASTEXITCODE -ne 0) { throw "NOM 2 engine patch failed." }
 
+Write-Host "Applying Galaxy S10 touch/buttons/original-icon fixes..."
+python tools/post_patch_ui.py --engine $Engine
+if ($LASTEXITCODE -ne 0) { throw "NOM 2 Galaxy S10 UI post-patch failed." }
+
 Write-Host ""
 Write-Host "NOM 2 port workspace is ready."
 Write-Host "Primary real-device target: Samsung Galaxy S10"
