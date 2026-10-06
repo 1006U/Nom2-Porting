@@ -18,7 +18,7 @@ jobs:
 
       - name: Check Python syntax
         run: |
-          python -m py_compile tools/prepare_engine.py tools/patch_korean.py tools/post_patch_ui.py tools/disable_leaderboard.py
+          python -m py_compile tools/prepare_engine.py tools/patch_korean.py tools/post_patch_ui.py tools/disable_leaderboard.py tools/finalize_s10_controls.py
           python - <<'PY'
           import json
           from pathlib import Path
