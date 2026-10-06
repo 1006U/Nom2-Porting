@@ -11,6 +11,12 @@ import zipfile
 from pathlib import Path
 
 
+INTRO_EN = (
+    "Some time ago, NOM ran away from everything. NOM encountered many obstacles and faced many "
+    "creatures of all sorts of sizes. NOM was also followed by a friendly dog and even kissed by "
+    "a pretty lady. Those were the things that made NOM happy."
+)
+
 CLASS_REPLACEMENTS = {
     "<OFF>": "<꺼짐>",
     "<ON>": "<켜짐>",
@@ -25,6 +31,11 @@ CLASS_REPLACEMENTS = {
     "Score": "점수",
     "Total": "합계",
     "VIBRATION ": "진동 ",
+    INTRO_EN: (
+        "오래전, 놈은 모든 것에서 도망쳤습니다. "
+        "수많은 장애물과 생명체를 만났고, 친근한 강아지와 예쁜 아가씨도 만났습니다. "
+        "그 모든 순간이 놈을 행복하게 했습니다."
+    ),
 }
 
 
@@ -151,7 +162,7 @@ def compile_font_bridge(source: Path, work: Path) -> bytes:
         "public Font(){} public Font(int f,int s,int z,float h){} "
         "public static Font getFont(int f,int s,int z){return new Font();} "
         "public static Font getDefaultFont(){return new Font();} "
-        "public int charWidth(char c){return 7;} }",
+        "public int charWidth(char c){return 9;} }",
         encoding="utf-8",
     )
 
@@ -177,6 +188,12 @@ def compile_font_bridge(source: Path, work: Path) -> bytes:
     return class_file.read_bytes()
 
 
+def should_patch_game_class(name: str) -> bool:
+    # Patch the original game classes in the JAR root (a.class, e.class, Nom2.class,
+    # etc.) but leave bundled third-party licensing classes untouched.
+    return name.endswith(".class") and "/" not in name and name != "gvl/f.class"
+
+
 def patch_jar(source: Path, output: Path, translations: Path, bridge_source: Path) -> None:
     if not source.is_file():
         raise FileNotFoundError(f"Source JAR not found: {source}")
@@ -188,6 +205,7 @@ def patch_jar(source: Path, output: Path, translations: Path, bridge_source: Pat
         raise RuntimeError("Every Korean translation entry must be a string")
 
     output.parent.mkdir(parents=True, exist_ok=True)
+    patched_classes = 0
 
     with tempfile.TemporaryDirectory(prefix="nom2-ko-") as temp_name:
         temp = Path(temp_name)
@@ -202,8 +220,9 @@ def patch_jar(source: Path, output: Path, translations: Path, bridge_source: Pat
                     data = build_text_scr(strings)
                 elif info.filename == "gvl/f.class":
                     data = bridge_class
-                elif info.filename == "e.class":
+                elif should_patch_game_class(info.filename):
                     data = patch_class_utf8(data, CLASS_REPLACEMENTS)
+                    patched_classes += 1
 
                 new_info = zipfile.ZipInfo(info.filename, date_time=info.date_time)
                 new_info.compress_type = zipfile.ZIP_DEFLATED
@@ -214,7 +233,7 @@ def patch_jar(source: Path, output: Path, translations: Path, bridge_source: Pat
 
     with zipfile.ZipFile(output, "r") as zf:
         names = set(zf.namelist())
-        for required in ("text/text.scr", "gvl/f.class", "e.class"):
+        for required in ("text/text.scr", "gvl/f.class", "a.class", "e.class"):
             if required not in names:
                 raise RuntimeError(f"Korean patch output is missing {required}")
 
@@ -223,10 +242,15 @@ def patch_jar(source: Path, output: Path, translations: Path, bridge_source: Pat
         if count != 88:
             raise RuntimeError(f"Patched text.scr has an unexpected string count: {count}")
 
+        if INTRO_EN.encode("utf-8") in zf.read("a.class"):
+            raise RuntimeError("Opening story English text is still present in patched a.class")
+
     print(f"Korean NOM 2 JAR ready: {output}")
     print("  translated text.scr: 88 entries")
+    print(f"  patched game classes: {patched_classes}")
+    print("  opening story: Korean")
     print("  hard-coded menus: Korean")
-    print("  Hangul renderer: compact 7px J2ME font bridge")
+    print("  Hangul renderer: enlarged 9px anti-aliased J2ME font bridge")
 
 
 def main() -> int:
