@@ -17,7 +17,15 @@ jobs:
           python-version: '3.12'
 
       - name: Check Python syntax
-        run: python -m py_compile tools/prepare_engine.py
+        run: |
+          python -m py_compile tools/prepare_engine.py tools/patch_korean.py tools/post_patch_ui.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('patch/ko/text_ko.json').read_text(encoding='utf-8'))
+          assert len(data) == 88, f'expected 88 Korean strings, got {len(data)}'
+          assert all(isinstance(x, str) for x in data)
+          PY
 
       - name: Check PowerShell syntax
         shell: pwsh
@@ -41,7 +49,7 @@ jobs:
       - name: Ensure proprietary JAR is not committed
         shell: bash
         run: |
-          if git ls-files 'game/*.jar' | grep -q .; then
-            echo 'Do not commit the original NOM 2 JAR.' >&2
+          if git ls-files 'game/*.jar' 'game/generated/*.jar' | grep -q .; then
+            echo 'Do not commit the original or generated NOM 2 JAR.' >&2
             exit 1
           fi
