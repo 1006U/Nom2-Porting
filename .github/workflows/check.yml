@@ -1,0 +1,47 @@
+name: Port checks
+
+on:
+  push:
+    branches: [main, galaxy-s10]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check Python syntax
+        run: python -m py_compile tools/prepare_engine.py
+
+      - name: Check PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path './scripts/setup.ps1'),
+            [ref]$null,
+            [ref]$errors
+          ) | Out-Null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path './scripts/one-click.ps1'),
+            [ref]$null,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | Format-List | Out-String | Write-Error
+            exit 1
+          }
+
+      - name: Ensure proprietary JAR is not committed
+        shell: bash
+        run: |
+          if git ls-files 'game/*.jar' | grep -q .; then
+            echo 'Do not commit the original NOM 2 JAR.' >&2
+            exit 1
+          fi
